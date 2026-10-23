@@ -1,13 +1,12 @@
 // Intro (brand v10, Rei Ayanami): the heliocentric Solar System as it stands today, one exponential zoom into Earth
 // landing exactly on the emblem's globe, a 700 ms dissolve, then the emblem's exponentials grow out of the base rule.
-// Production rules: once per session, never with prefers-reduced-motion, the page stays usable underneath
+// Production rules: once a day, never with prefers-reduced-motion; ?intro in the URL forces it, the page stays usable underneath
 // (the overlay takes no pointer events; click, key, wheel or touch skips to the landing).
 
 import { DPR, cssVar, fit, palette, reducedMotion, rng, withAlpha, type Palette } from './canvas';
 import { emblemGeometry, emblemView, globe, hasMask, setWingGrowth } from './emblem';
 
 const D2R = Math.PI / 180;
-const SEEN_KEY = 'tst:intro-seen';
 
 /* JPL "Keplerian elements for approximate positions", J2000: a, e, L, dL/century, perihelion, d/century */
 type Elements = [number, number, number, number, number, number];
@@ -131,32 +130,42 @@ function engravedSun(c: CanvasRenderingContext2D, p: Palette, x: number, y: numb
   }
 }
 
-function seenThisSession(): boolean {
+const DAY_KEY = 'tst:intro-day';
+
+/** Local calendar date, YYYY-MM-DD. */
+function today(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function seenToday(): boolean {
   try {
-    return sessionStorage.getItem(SEEN_KEY) === '1';
+    return localStorage.getItem(DAY_KEY) === today();
   } catch {
     return false;
   }
 }
 function markSeen() {
   try {
-    sessionStorage.setItem(SEEN_KEY, '1');
+    localStorage.setItem(DAY_KEY, today());
   } catch {
-    /* private mode: the intro may play again, which is fine */
+    /* storage blocked: the intro may play again, which is fine */
   }
 }
 
-/** Should the intro play on this load? Once per session, never with reduced motion. */
-export function shouldPlayIntro(): boolean {
-  return !reducedMotion() && !seenThisSession() && emblemGeometry() !== null;
+/** `?intro` in the URL forces the intro, even with reduced motion or after today's play (for reviews). */
+export function introForced(): boolean {
+  return new URLSearchParams(location.search).has('intro');
 }
 
-/**
- * Plays the intro on the overlay canvas (rendered hidden; shown only here). Resolves when the wings have grown.
- * `force` ignores the once-per-session rule (for reviews); reduced motion always skips it.
- */
-export function playIntro(cv: HTMLCanvasElement, force = false): Promise<void> {
-  if (reducedMotion() || (!force && !shouldPlayIntro())) {
+/** Should the intro play on this load? Once a day, never with reduced motion, unless forced. */
+export function shouldPlayIntro(): boolean {
+  if (emblemGeometry() === null) return false;
+  return introForced() || (!reducedMotion() && !seenToday());
+}
+
+/** Plays the intro on the overlay canvas (rendered hidden; shown only here). Resolves when the wings have grown. */
+export function playIntro(cv: HTMLCanvasElement): Promise<void> {
+  if (!shouldPlayIntro()) {
     setWingGrowth(1);
     return Promise.resolve();
   }

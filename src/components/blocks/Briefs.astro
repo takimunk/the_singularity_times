@@ -1,0 +1,30 @@
+---
+interface Props {
+  items: { headline: string; text: string; date: Date; source: string; url: string }[];
+}
+
+const { items } = Astro.props;
+const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+---
+
+<section>
+  <div class="sect">In brief</div>
+  <ul>
+    {items.map((it) => (
+      <li>
+        <h4>{it.headline}</h4>
+        <p>{it.text}</p>
+        <span class="meta">{fmt.format(it.date)}. <a href={it.url} target="_blank" rel="noopener">{it.source}</a></span>
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { padding: 7px 0; }
+  li:first-child { padding-top: 0; }
+  li + li { border-top: 1px dotted var(--hair); }
+  h4 { margin: 0 0 2px; font: 700 16px/1.2 var(--f-body); }
+  p { margin: 0 0 2px; }
+</style>

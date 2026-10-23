@@ -1,0 +1,26 @@
+---
+interface Props {
+  items: { text: string; who: string; role?: string; date?: Date; url: string }[];
+}
+
+const { items } = Astro.props;
+---
+
+<section>
+  <div class="sect">Said lately</div>
+  {items.map((q) => (
+    <figure>
+      <blockquote>“{q.text}”</blockquote>
+      <figcaption class="meta">
+        <a href={q.url} target="_blank" rel="noopener">{q.who}</a>{q.role && <>, {q.role}</>}
+      </figcaption>
+    </figure>
+  ))}
+</section>
+
+<style>
+  figure { margin: 0; padding: 7px 0; }
+  figure:first-of-type { padding-top: 0; }
+  figure + figure { border-top: 1px dotted var(--hair); }
+  blockquote { margin: 0 0 3px; font: italic 400 18px/1.25 var(--f-body); }
+</style>

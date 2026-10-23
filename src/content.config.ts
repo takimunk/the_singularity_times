@@ -24,6 +24,9 @@ const issues = defineCollection({
           height: z.number().int().positive().optional(),
         })
         .optional(),
+      // A live piece in the cover slot instead of art: a src/viz id, credited and linked to its author.
+      viz: z.object({ id: z.string(), credit: z.string(), url: link }).optional(),
+      sources: z.array(z.object({ name: z.string(), url: link })).default([]),
       placeholder: z.boolean().default(false),
     }),
     // A quest the reader copies into their own agent.
@@ -31,15 +34,36 @@ const issues = defineCollection({
     exponential: z
       .object({
         title: z.string(),
+        // x is a year, fractional for dates inside a year (2025.5 is about July 2025).
         series: z.array(z.tuple([z.number(), z.number()])).min(3),
+        unit: z.string().optional(),
+        caption: z.string().optional(),
         source: z.string(),
         sourceUrl: link.optional(),
         draft: z.boolean().default(false),
       })
       .optional(),
-    // Other authors' posts: embedded by URL with credit, never re-uploaded.
+    // Short items: a headline, one or two lines, and the source it came from.
+    briefs: z
+      .array(z.object({ headline: z.string(), text: z.string(), date: z.coerce.date(), source: z.string(), url: link }))
+      .default([]),
+    quotes: z
+      .array(z.object({ text: z.string(), who: z.string(), role: z.string().optional(), date: z.coerce.date().optional(), url: link }))
+      .default([]),
+    // Other authors' posts, set in our own type with credit and a link back; counts are a snapshot at press time.
     fromX: z
-      .array(z.object({ url: link, author: z.string(), handle: z.string(), text: z.string(), date: z.coerce.date().optional() }))
+      .array(
+        z.object({
+          url: link,
+          author: z.string(),
+          handle: z.string(),
+          text: z.string(),
+          date: z.coerce.date().optional(),
+          likes: z.number().int().nonnegative().optional(),
+          reposts: z.number().int().nonnegative().optional(),
+          replies: z.number().int().nonnegative().optional(),
+        }),
+      )
       .default([]),
     hackerNews: z
       .array(z.object({ title: z.string(), url: link, points: z.number().int(), comments: z.number().int() }))
