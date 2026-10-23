@@ -1,7 +1,7 @@
 # Security headers for Cloudflare Pages / Workers static assets.
 # Any new third-party origin (embeds, widgets, fonts) must be added to the CSP here.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://platform.twitter.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self'; frame-src https://platform.twitter.com https://www.youtube-nocookie.com; connect-src 'self' https://api.exchange.coinbase.com https://gamma-api.polymarket.com https://clob.polymarket.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self'; frame-src https://www.youtube-nocookie.com; connect-src 'self' https://api.exchange.coinbase.com https://gamma-api.polymarket.com https://clob.polymarket.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY

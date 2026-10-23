@@ -29,30 +29,25 @@ const { Content } = await render(issue);
   <Masthead coins={d.coins} predictions={d.predictions} />
 
   <main class="front">
-    <div class="row">
-      <div class="col c8">
+    <div class="top">
+      <div class="col main">
         <Lead {...d.lead}><Content /></Lead>
       </div>
-      <div class="col c4 stack">
+      <aside class="col side">
         <DailyPrompt text={d.prompt.text} />
         {d.exponential && <DailyExponential {...d.exponential} />}
-      </div>
+      </aside>
     </div>
 
-    <div class="row">
-      {d.briefs.length > 0 && <div class="col c4"><Briefs items={d.briefs} /></div>}
-      {d.fromX.length > 0 && <div class="col c4"><FromX posts={d.fromX} /></div>}
-      {d.quotes.length > 0 && <div class="col c4"><Quotes items={d.quotes} /></div>}
-    </div>
-
-    <div class="row">
-      {d.interactive && <div class="col c8"><Interactive {...d.interactive} /></div>}
-      {d.interview && <div class="col c4"><Interview {...d.interview} /></div>}
-    </div>
-
-    <div class="row">
-      {d.hackerNews.length > 0 && <div class="col c4"><HackerNews items={d.hackerNews} /></div>}
-      {d.artworks.length > 0 && <div class="col c8"><Artworks items={d.artworks} /></div>}
+    <!-- Everything else is set like type: one three-column flow that balances its own column bottoms. -->
+    <div class="flow">
+      {d.briefs.length > 0 && <Briefs items={d.briefs} />}
+      {d.fromX.length > 0 && <FromX posts={d.fromX} />}
+      {d.quotes.length > 0 && <Quotes items={d.quotes} />}
+      {d.interview && <Interview {...d.interview} />}
+      {d.interactive && <Interactive {...d.interactive} />}
+      {d.hackerNews.length > 0 && <HackerNews items={d.hackerNews} />}
+      {d.artworks.length > 0 && <Artworks items={d.artworks} />}
     </div>
   </main>
 
@@ -61,21 +56,21 @@ const { Content } = await render(issue);
 </Base>
 
 <style>
-  .front { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); margin-top: 12px; }
-  .row { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; padding: 12px 0 14px; border-bottom: 1px solid var(--ink); }
-  .row:first-child { padding-top: 0; }
-  .row:empty { display: none; }
-  .col { min-width: 0; padding: 0 14px; border-left: 1px solid var(--hair); }
-  .col:first-child { padding-left: 0; border-left: 0; }
-  .col:last-child { padding-right: 0; }
-  .c8 { grid-column: span 8; }
-  .c6 { grid-column: span 6; }
-  .c4 { grid-column: span 4; }
-  .stack > :global(section + section) { border-top: 1px solid var(--hair); margin-top: 12px; padding-top: 12px; }
+  .front { margin-top: 12px; }
+  .top { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); padding-bottom: 14px; border-bottom: 1px solid var(--ink); }
+  .col { min-width: 0; }
+  .main { padding-right: 14px; }
+  /* The sidebar matches the lead's height; the exponential chart takes up whatever is left. */
+  .side { display: flex; flex-direction: column; padding-left: 14px; border-left: 1px solid var(--hair); }
+  .side > :global(section + section) { border-top: 1px solid var(--hair); margin-top: 12px; padding-top: 12px; }
+  .flow { columns: 3; column-gap: 28px; column-rule: 1px solid var(--hair); padding-top: 12px; }
+  .flow > :global(* + *) { border-top: 1px solid var(--ink); margin-top: 12px; padding-top: 12px; }
+  .flow :global(.sect), .flow :global(h3) { break-after: avoid; }
+  .flow :global(li), .flow :global(figure), .flow :global(.media) { break-inside: avoid; }
   @media (max-width: 980px) {
-    .c8, .c6, .c4 { grid-column: 1 / -1; }
-    .row { grid-template-columns: 1fr; }
-    .col { padding: 0; border-left: 0; }
-    .col + .col { border-top: 1px solid var(--hair); margin-top: 12px; padding-top: 12px; }
+    .top { grid-template-columns: 1fr; }
+    .main { padding-right: 0; }
+    .side { padding-left: 0; border-left: 0; border-top: 1px solid var(--hair); margin-top: 12px; padding-top: 12px; }
+    .flow { columns: 1; }
   }
 </style>

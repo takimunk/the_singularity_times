@@ -1,98 +1,61 @@
 ---
-// Posts from X: our own card with credit and a link back; X's widgets.js replaces it with the
-// real embed only when the block nears the viewport, and the card stays if X fails or is blocked.
+// Posts from X, set in the paper's own type: author, words, date and a snapshot of the counts, with a link back.
+// No X widgets and no avatars: nothing of the author's is re-uploaded, and the page makes no request to X.
 import Icon from '../Icon.astro';
 
 interface Props {
-  posts: { url: string; author: string; handle: string; text: string; date?: Date }[];
+  posts: { url: string; author: string; handle: string; text: string; date?: Date; likes?: number; reposts?: number; replies?: number }[];
 }
 
 const { posts } = Astro.props;
-const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+const num = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+const counts = (p: Props['posts'][number]) =>
+  (
+    [
+      [p.replies, 'replies'],
+      [p.reposts, 'reposts'],
+      [p.likes, 'likes'],
+    ] as const
+  ).filter(([n]) => n !== undefined) as [number, string][];
 ---
 
-<article>
+<section>
   <div class="sect"><Icon name="x" /> From X</div>
   {posts.map((post) => (
-    <figure class="x-embed" data-tweet-id={post.url.match(/\/status(?:es)?\/(\d+)/)?.[1]}>
-      <div class="card">
-        <div class="who">
-          <span class="ava" aria-hidden="true"></span>
-          <span><b>{post.author}</b><span>{post.handle}</span></span>
-        </div>
-        <blockquote>{post.text}</blockquote>
-        <div class="meta">
+    <figure class="post">
+      <figcaption class="who">
+        <b>{post.author}</b>
+        <a class="h" href={post.url} target="_blank" rel="noopener">{post.handle}</a>
+      </figcaption>
+      <blockquote cite={post.url}>{post.text}</blockquote>
+      <div class="foot">
+        {counts(post).length > 0 && (
+          <span class="n">
+            {counts(post).map(([n, label]) => (
+              <span title={`${n.toLocaleString('en-US')} ${label}`}>{num.format(n)} <i>{label}</i></span>
+            ))}
+          </span>
+        )}
+        <span class="meta">
           {post.date && <>{fmt.format(post.date)}. </>}
           <a href={post.url} target="_blank" rel="noopener">View on X</a>
-        </div>
+        </span>
       </div>
-      <div class="live"></div>
     </figure>
   ))}
-</article>
+</section>
 
 <style>
-  .x-embed + .x-embed { border-top: 1px dotted var(--hair); margin-top: 10px; padding-top: 10px; }
-  .who { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .ava {
-    width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--ink); flex: none;
-    background: repeating-linear-gradient(0deg, var(--ink) 0 1px, transparent 1px 3px);
-  }
-  .who b { display: block; font: 600 14px/1.1 var(--f-body); }
-  .who span span { font: italic 400 12px/1.2 var(--f-body); color: var(--ink-soft); }
-  blockquote { margin: 0 0 6px; font: 400 16px/1.35 var(--f-body); }
-  .live :global(.twitter-tweet) { margin: 0 !important; }
+  .post { padding: 8px 0; break-inside: avoid; }
+  .post:first-of-type { padding-top: 0; }
+  .post + .post { border-top: 1px dotted var(--hair); }
+  .who { display: flex; align-items: baseline; gap: 6px; margin-bottom: 3px; }
+  .who b { font: 700 14px/1.2 var(--f-body); }
+  .h { font: 400 11px/1.2 var(--f-mono); color: var(--ink-soft); text-decoration: none; }
+  .h:hover { text-decoration: underline; }
+  blockquote { margin: 0 0 5px; padding-left: 10px; border-left: 2px solid var(--ink); font: 400 16px/1.35 var(--f-body); }
+  .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; align-items: baseline; }
+  .n { display: flex; gap: 10px; font: 500 11px/1.3 var(--f-mono); }
+  .n i { font: italic 400 12px/1 var(--f-body); color: var(--ink-soft); }
 </style>
-
-<script>
-  type Twttr = {
-    widgets: {
-      createTweet(id: string, el: HTMLElement, options?: Record<string, unknown>): Promise<HTMLElement | undefined>;
-    };
-  };
-  const w = window as typeof window & { twttr?: Twttr };
-
-  let loading: Promise<Twttr> | undefined;
-  function loadWidgets(): Promise<Twttr> {
-    loading ??= new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://platform.twitter.com/widgets.js';
-      s.async = true;
-      s.onload = () => (w.twttr?.widgets ? resolve(w.twttr) : reject(new Error('twttr missing')));
-      s.onerror = reject;
-      document.head.append(s);
-    });
-    return loading;
-  }
-
-  async function embed(figure: HTMLElement) {
-    const id = figure.dataset.tweetId;
-    const live = figure.querySelector<HTMLElement>('.live');
-    if (!id || !live) return;
-    try {
-      const twttr = await loadWidgets();
-      const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-      // Drop the card only once X has actually rendered the post.
-      const el = await twttr.widgets.createTweet(id, live, { dnt: true, theme: dark ? 'dark' : 'light' });
-      if (!el) return;
-      figure.querySelector('.card')?.setAttribute('hidden', '');
-    } catch {
-      // Blocked or offline: the static card stays.
-    }
-  }
-
-  const figures = document.querySelectorAll<HTMLElement>('.x-embed[data-tweet-id]');
-  if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          io.unobserve(entry.target);
-          embed(entry.target as HTMLElement);
-        }
-      },
-      { rootMargin: '400px 0px' },
-    );
-    figures.forEach((f) => io.observe(f));
-  }
-</script>

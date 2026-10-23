@@ -30,6 +30,7 @@ const start = Number.parseInt(u.searchParams.get('t') ?? '0', 10) || 0;
   <h3>{title}</h3>
   {quote && <blockquote>{quote}</blockquote>}
   {note && <p class="s">{note}</p>}
+  <p class="meta">{duration && <>{duration}. </>}<a href={url} target="_blank" rel="noopener">Watch on YouTube</a></p>
 </article>
 
 <style>
@@ -42,6 +43,7 @@ const start = Number.parseInt(u.searchParams.get('t') ?? '0', 10) || 0;
     content: ''; border-left: 13px solid var(--ink); border-top: 8px solid transparent; border-bottom: 8px solid transparent; margin-left: 3px;
   }
   .dur { position: absolute; right: 0; bottom: 0; background: var(--paper); font: 500 11px/1 var(--f-mono); padding: 3px 5px; }
+  .meta { margin: 3px 0 0; }
   blockquote { margin: 0 0 6px; font: italic 400 15px/1.35 var(--f-body); }
 </style>
 

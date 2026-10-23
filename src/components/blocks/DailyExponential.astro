@@ -45,9 +45,11 @@ const last = Math.floor(series[n - 1][0]);
 </section>
 
 <style>
+  /* In a flex column the chart grows to fill spare height; elsewhere it keeps 190 px. */
+  section { display: flex; flex-direction: column; flex: 1 1 auto; }
   h3 { margin-top: 0; }
   .cap { margin: 4px 0 2px; }
-  canvas { width: 100%; height: 190px; }
+  canvas { width: 100%; height: 190px; flex: 1 0 190px; }
 </style>
 
 <script>
@@ -122,5 +124,10 @@ const last = Math.floor(series[n - 1][0]);
 
     draw();
     onRelayout(draw);
+    let raf = 0;
+    new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(draw);
+    }).observe(cv);
   }
 </script>
