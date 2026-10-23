@@ -18,6 +18,19 @@
   --earth: #1638b8; /* spot blue: the Earth, the singularity point, live numbers */
   --ray: rgba(0, 0, 0, 0.28);
 
+  /* Same in both themes. Glow alphas live in code: ember 0.55 → 0.18 → 0, sun 0.35 → 0.08 → 0. */
+  --ember: #e8301f; /* "you are here" on the emblem globe */
+  --sun-glow: #f0781e; /* intro sun */
+  /* Intro orbit inks, stroked at 0.8 alpha (Earth 0.9). */
+  --planet-mercury: #8c8577;
+  --planet-venus: #c29a2e;
+  --planet-earth: var(--earth);
+  --planet-mars: #c2452d;
+  --planet-jupiter: #a86b3c;
+  --planet-saturn: #8f7f45;
+  --planet-uranus: #3c8e92;
+  --planet-neptune: #3550a6;
+
   --f-body: 'Newsreader Variable', 'Iowan Old Style', Georgia, serif;
   --f-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
   --f-name: 'Instrument Serif', Georgia, serif; /* rasterized on a 1.5 px grid for the nameplate */

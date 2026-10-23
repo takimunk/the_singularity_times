@@ -34,7 +34,7 @@ function helio(k: string, T: number): [number, number] {
   return [x * Math.cos(w) - y * Math.sin(w), x * Math.sin(w) + y * Math.cos(w)];
 }
 
-// Orbit colours are the intro's own muted inks from the v9 prototype (Earth uses --earth). Optional overrides: --planet-<name>.
+// Orbit inks come from --planet-<name> in brand.css (Earth uses --earth); the values here are fallbacks.
 const PLAN: [string, string, string | null, number][] = [
   ['mercury', 'Mercury', '#8C8577', 1.6],
   ['venus', 'Venus', '#C29A2E', 2.3],
@@ -45,7 +45,7 @@ const PLAN: [string, string, string | null, number][] = [
   ['uranus', 'Uranus', '#3C8E92', 3.1],
   ['neptune', 'Neptune', '#3550A6', 3.1],
 ];
-const SUN_FIRE = '#F0781E';
+const SUN_FIRE = '#F0781E'; // fallback for --sun-glow
 const FLAT = 0.5;
 const ZOOM = 70;
 const DUR = { sys: 1400, zoom: 3000, fade: 700, grow: 1600 };
@@ -170,7 +170,8 @@ export function playIntro(cv: HTMLCanvasElement, force = false): Promise<void> {
   const pal = palette();
   const body = cssVar('--f-body') || 'serif';
   const colors = PLAN.map(([k, , col]) => (col ? cssVar(`--planet-${k}`) || col : pal.earth));
-  const fire = [withAlpha(SUN_FIRE, 0.35), withAlpha(SUN_FIRE, 0.08), withAlpha(SUN_FIRE, 0)];
+  const sun = cssVar('--sun-glow') || SUN_FIRE;
+  const fire = [withAlpha(sun, 0.35), withAlpha(sun, 0.08), withAlpha(sun, 0)];
 
   setWingGrowth(0);
   cv.hidden = false;

@@ -21,7 +21,7 @@ const EAR_MIN = 200;
 const GAP = 20;
 const D2R = Math.PI / 180;
 const FRAME_MS = 50; // at most ~20 fps
-const EMBER_FALLBACK = '#e8301f'; // until brand.css defines --ember
+const EMBER_FALLBACK = '#e8301f'; // used only if brand.css fails to load
 
 /* Visitor's place, guessed from the time zone (no location permission needed). */
 const PLACES: Record<string, [number, number]> = {
