@@ -31,12 +31,22 @@ const issues = defineCollection({
     exponential: z
       .object({
         title: z.string(),
+        // x is a year, fractional for dates inside a year (2025.5 is about July 2025).
         series: z.array(z.tuple([z.number(), z.number()])).min(3),
+        unit: z.string().optional(),
+        caption: z.string().optional(),
         source: z.string(),
         sourceUrl: link.optional(),
         draft: z.boolean().default(false),
       })
       .optional(),
+    // Short items: a headline, one or two lines, and the source it came from.
+    briefs: z
+      .array(z.object({ headline: z.string(), text: z.string(), date: z.coerce.date(), source: z.string(), url: link }))
+      .default([]),
+    quotes: z
+      .array(z.object({ text: z.string(), who: z.string(), role: z.string().optional(), date: z.coerce.date().optional(), url: link }))
+      .default([]),
     // Other authors' posts: embedded by URL with credit, never re-uploaded.
     fromX: z
       .array(z.object({ url: link, author: z.string(), handle: z.string(), text: z.string(), date: z.coerce.date().optional() }))

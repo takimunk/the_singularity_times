@@ -2,12 +2,14 @@
 interface Props {
   title: string;
   series: [number, number][];
+  unit?: string;
+  caption?: string;
   source: string;
   sourceUrl?: string;
   draft?: boolean;
 }
 
-const { title, series, source, sourceUrl, draft } = Astro.props;
+const { title, series, unit, caption, source, sourceUrl, draft } = Astro.props;
 
 // Least-squares fit of ln(y) on x, done at build time.
 const xs = series.map(([x]) => x - series[0][0]);
@@ -18,9 +20,10 @@ const my = ys.reduce((a, b) => a + b) / n;
 const b = xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0) / xs.reduce((s, x) => s + (x - mx) ** 2, 0);
 const a = my - b * mx;
 const rate = Math.round((Math.exp(b) - 1) * 100);
-const doubling = (Math.log(2) / b).toFixed(1);
-const first = series[0][0];
-const last = series[n - 1][0];
+const years = Math.log(2) / b;
+const doubling = years < 2 ? `${Math.round(years * 12)} months` : `${years.toFixed(1)} years`;
+const first = Math.floor(series[0][0]);
+const last = Math.floor(series[n - 1][0]);
 ---
 
 <section id="exp">
@@ -30,17 +33,20 @@ const last = series[n - 1][0];
     id="exp-chart"
     data-series={JSON.stringify(series)}
     data-fit={JSON.stringify([a, b])}
+    data-unit={unit}
     role="img"
     aria-label={`Bar chart of ${title.toLowerCase()}, ${first} to ${last}, with an exponential fit`}
   ></canvas>
+  {caption && <p class="cap">{caption}</p>}
   <p class="meta">
-    Exponential fit: about +{rate}% a year, doubling every {doubling} years. Source:{' '}
+    Exponential fit: {rate < 100 && <>about +{rate}% a year, </>}doubling every {doubling}. Source:{' '}
     {sourceUrl ? <a href={sourceUrl} target="_blank" rel="noopener">{source}</a> : source}.
   </p>
 </section>
 
 <style>
   h3 { margin-top: 0; }
+  .cap { margin: 4px 0 2px; }
   canvas { width: 100%; height: 190px; }
 </style>
 
@@ -60,10 +66,17 @@ const last = series[n - 1][0];
       c.setTransform(DPR, 0, 0, DPR, 0, 0);
       c.clearRect(0, 0, w, h);
       const n = series.length;
+      const x0 = series[0][0], x1 = series[n - 1][0], span = x1 - x0;
+      const unit = cv.dataset.unit;
       const peak = Math.max(...series.map(([, v]) => v));
       const step = 10 ** Math.floor(Math.log10(peak)) / 2;
       const max = Math.ceil((peak * 1.05) / step) * step;
-      const L = 34, B = h - 18, T = 8, R = w - 4, bw = (R - L) / n;
+      const L = 34, B = h - 18, T = 8, R = w - 4;
+      // Equal spacing gives the old bar width; uneven dates shrink bars to fit the closest pair.
+      const slot = (R - L) / n;
+      const X = (x: number) => L + slot / 2 + ((x - x0) / span) * (R - L - slot);
+      const gap = Math.min(...series.slice(1).map(([x], i) => X(x) - X(series[i][0])));
+      const ww = Math.max(3, Math.min(slot * 0.64, gap * 0.7));
       const Y = (v: number) => B - ((B - T) * v) / max;
       const label = (v: number) => (v >= 1000 ? `${v / 1000}k` : String(v));
 
@@ -77,24 +90,32 @@ const last = series[n - 1][0];
         c.beginPath(); c.moveTo(L, y); c.lineTo(R, y); c.stroke();
         c.fillText(label(v), L - 5, y + 3);
       }
-      c.textAlign = 'center';
-      series.forEach(([yr, v], i) => {
-        const x = L + i * bw + bw * 0.18, ww = bw * 0.64, y = Y(v);
+      if (unit) { c.textAlign = 'left'; c.fillText(unit, L + 3, T + 11); }
+      for (const [xv, v] of series) {
+        const x = X(xv) - ww / 2, y = Y(v);
         c.save();
         c.beginPath(); c.rect(x, y, ww, B - y); c.clip();
         c.strokeStyle = p.ink; c.lineWidth = 0.6;
         for (let yy = B; yy > y - 2; yy -= 2.4) { c.beginPath(); c.moveTo(x, yy); c.lineTo(x + ww, yy); c.stroke(); }
         c.restore();
         c.strokeStyle = p.ink; c.lineWidth = 0.9; c.strokeRect(x, y, ww, B - y);
-        if (i % 3 === 0 || i === n - 1) { c.fillStyle = p.soft; c.fillText(String(yr), x + ww / 2, B + 12); }
-      });
+      }
+      // Year labels on whole years, every third one on long spans.
+      c.fillStyle = p.soft; c.textAlign = 'center';
+      const every = span > 6 ? 3 : 1;
+      for (let yr = Math.ceil(x0); yr <= Math.floor(x1); yr++) {
+        if ((yr - Math.ceil(x0)) % every === 0 || yr === Math.floor(x1)) c.fillText(String(yr), X(yr), B + 12);
+      }
+      c.save();
+      c.beginPath(); c.rect(L, 0, R - L, B); c.clip();
       c.beginPath();
       for (let i = 0; i <= 90; i++) {
-        const xx = (i / 90) * (n - 1);
-        const x = L + bw * 0.5 + xx * bw, y = Y(fitY(xx));
+        const xx = (i / 90) * span;
+        const x = X(x0 + xx), y = Y(fitY(xx));
         i ? c.lineTo(x, y) : c.moveTo(x, y);
       }
       c.strokeStyle = p.earth; c.lineWidth = 1.8; c.stroke();
+      c.restore();
       c.strokeStyle = p.ink; c.lineWidth = 1;
       c.beginPath(); c.moveTo(L, B); c.lineTo(R, B); c.stroke();
     };

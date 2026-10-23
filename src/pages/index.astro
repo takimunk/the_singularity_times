@@ -11,6 +11,8 @@ import HackerNews from '../components/blocks/HackerNews.astro';
 import Interview from '../components/blocks/Interview.astro';
 import Interactive from '../components/blocks/Interactive.astro';
 import Artworks from '../components/blocks/Artworks.astro';
+import Briefs from '../components/blocks/Briefs.astro';
+import Quotes from '../components/blocks/Quotes.astro';
 import Pager from '../components/Pager.astro';
 import Popups from '../components/Popups.astro';
 
@@ -38,14 +40,19 @@ const { Content } = await render(issue);
     </div>
 
     <div class="row">
+      {d.briefs.length > 0 && <div class="col c4"><Briefs items={d.briefs} /></div>}
       {d.fromX.length > 0 && <div class="col c4"><FromX posts={d.fromX} /></div>}
-      {d.hackerNews.length > 0 && <div class="col c4"><HackerNews items={d.hackerNews} /></div>}
+      {d.quotes.length > 0 && <div class="col c4"><Quotes items={d.quotes} /></div>}
+    </div>
+
+    <div class="row">
+      {d.interactive && <div class="col c8"><Interactive {...d.interactive} /></div>}
       {d.interview && <div class="col c4"><Interview {...d.interview} /></div>}
     </div>
 
     <div class="row">
-      {d.interactive && <div class="col c6"><Interactive {...d.interactive} /></div>}
-      {d.artworks.length > 0 && <div class="col c6"><Artworks items={d.artworks} /></div>}
+      {d.hackerNews.length > 0 && <div class="col c4"><HackerNews items={d.hackerNews} /></div>}
+      {d.artworks.length > 0 && <div class="col c8"><Artworks items={d.artworks} /></div>}
     </div>
   </main>
 
