@@ -40,7 +40,7 @@ const { Content } = await render(issue);
     </div>
 
     <!-- Everything else is set like type: one three-column flow that balances its own column bottoms. -->
-    <div class="flow">
+    <div class="flow" id="flow">
       {d.briefs.length > 0 && <Briefs items={d.briefs} />}
       {d.fromX.length > 0 && <FromX posts={d.fromX} />}
       {d.quotes.length > 0 && <Quotes items={d.quotes} />}
@@ -66,6 +66,7 @@ const { Content } = await render(issue);
   .flow { columns: 3; column-gap: 28px; column-rule: 1px solid var(--hair); padding-top: 12px; }
   .flow > :global(* + *) { border-top: 1px solid var(--ink); margin-top: 12px; padding-top: 12px; }
   .flow :global(.sect), .flow :global(h3) { break-after: avoid; }
+  .flow :global(.coltop) { border-top: 0 !important; margin-top: 0 !important; padding-top: 0 !important; }
   .flow :global(li), .flow :global(figure), .flow :global(.media) { break-inside: avoid; }
   @media (max-width: 980px) {
     .top { grid-template-columns: 1fr; }
@@ -74,3 +75,10 @@ const { Content } = await render(issue);
     .flow { columns: 1; }
   }
 </style>
+
+<script>
+  import { mountFlow } from '../lib/flow';
+
+  const flow = document.getElementById('flow');
+  if (flow) mountFlow(flow);
+</script>
