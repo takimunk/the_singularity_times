@@ -1,0 +1,31 @@
+---
+import Icon from '../Icon.astro';
+
+interface Props {
+  items: { title: string; url: string; points: number; comments: number }[];
+}
+
+const { items } = Astro.props;
+---
+
+<section>
+  <div class="sect"><Icon name="yc" /> Hacker News</div>
+  <ol>
+    {items.map((it) => (
+      <li>
+        <a href={it.url} target="_blank" rel="noopener">{it.title}</a>
+        <span>{it.points} points, {it.comments} comments</span>
+      </li>
+    ))}
+  </ol>
+</section>
+
+<style>
+  ol { list-style: none; margin: 0; padding: 0; counter-reset: hn; }
+  li { counter-increment: hn; display: grid; grid-template-columns: 18px 1fr; gap: 1px 4px; padding: 5px 0; }
+  li + li { border-top: 1px dotted var(--hair); }
+  li::before { content: counter(hn); font: 600 12px/1.4 var(--f-mono); }
+  a { text-decoration: none; font: 500 14px/1.3 var(--f-body); }
+  a:hover { text-decoration: underline; }
+  span { grid-column: 2; font: 400 11px/1.2 var(--f-mono); color: var(--ink-soft); }
+</style>

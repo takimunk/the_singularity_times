@@ -1,0 +1,22 @@
+---
+interface Props {
+  text: string;
+}
+
+const { text } = Astro.props;
+---
+
+<section id="prompt">
+  <div class="sect">Daily Prompt<span class="note">new every day</span></div>
+  <p class="s lede">Copy today’s quest into your own agent and see what it tells you.</p>
+  <div class="quest" id="dp-main">{text}</div>
+  <div class="acts">
+    <button class="btn" type="button" data-copy="dp-main">Copy prompt</button>
+    <span class="ok" aria-live="polite"></span>
+  </div>
+</section>
+
+<style>
+  .lede { margin-bottom: 8px; }
+  .quest { border: 1px solid var(--ink); padding: 10px 12px; font: italic 400 15px/1.4 var(--f-body); }
+</style>

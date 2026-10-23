@@ -1,0 +1,117 @@
+---
+// Balthasar: left ear, Coinbase spot prices with 24 h sparklines.
+// Built with the demo set (labelled "demo"); the script swaps in live Coinbase candles when they load.
+// The ear's box (height, rule, width, flex column) comes from Masthead.astro.
+import cbLogo from '../../assets/logos/coinbase.svg?raw';
+import { demoCoins, fmtChange, fmtPrice } from '../../lib/markets';
+
+interface Props {
+  coins: string[];
+}
+
+const { coins } = Astro.props;
+const demo = demoCoins(coins);
+const logo = cbLogo.replace('<svg ', '<svg class="lg cb" role="img" aria-label="Coinbase" ');
+---
+
+<aside class="ear l" aria-label="Crypto prices" data-coins={JSON.stringify(coins)}>
+  <h4>Markets<i class="note">24 hours, demo</i></h4>
+  <div class="ticks">
+    {
+      demo.map((c) => {
+        const ch = fmtChange(c);
+        return (
+          <div class="tick">
+            <span class="sym">{c.sym}</span>
+            <canvas aria-hidden="true" />
+            <span class="px">{fmtPrice(c.h[c.h.length - 1])}</span>
+            <span class={`ch ${ch.up ? 'up' : 'dn'}`}>{ch.text}</span>
+          </div>
+        );
+      })
+    }
+  </div>
+  <div class="by">
+    Data provided by <a href="https://www.coinbase.com/explore" target="_blank" rel="noopener" set:html={logo} />
+  </div>
+</aside>
+
+<style>
+  h4 { margin: 0; display: flex; align-items: center; gap: 6px; font: 700 14px/1 var(--f-body); }
+  h4 i { font: italic 400 12px/1 var(--f-body); color: var(--ink-soft); }
+  .tick {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 62px 54px;
+    align-items: center;
+    gap: 6px;
+    font: 500 12px/1 var(--f-mono);
+    font-variant-numeric: tabular-nums;
+    padding: 2px 0;
+    white-space: nowrap;
+  }
+  .tick + .tick { border-top: 1px dotted var(--hair); }
+  .sym { font-weight: 600; }
+  .px, .ch { text-align: right; }
+  .ch { font-size: 11px; }
+  .up { color: var(--earth); }
+  .dn { color: var(--ink-soft); }
+  canvas { width: 100%; height: 16px; display: block; }
+  .by {
+    height: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font: italic 400 12px/1 var(--f-body);
+    color: var(--ink-soft);
+    border-top: 1px dotted var(--hair);
+    padding-top: 4px;
+    margin-top: 1px;
+    box-sizing: content-box;
+  }
+  .by a { display: inline-flex; align-items: center; color: var(--ink); height: 16px; }
+  .by :global(svg.lg.cb) { height: 11px; }
+</style>
+
+<script>
+  import { onRelayout, palette } from '../../lib/canvas';
+  import { demoCoins, fetchCoin, fmtChange, fmtPrice, poll, type Coin } from '../../lib/markets';
+  import { spark } from '../../lib/sparkline';
+
+  const ear = document.querySelector<HTMLElement>('.ear.l[data-coins]');
+  if (ear) {
+    const syms: string[] = JSON.parse(ear.dataset.coins || '[]');
+    const rows = [...ear.querySelectorAll<HTMLElement>('.tick')];
+    const note = ear.querySelector<HTMLElement>('h4 .note')!;
+    let coins: Coin[] = demoCoins(syms);
+
+    const render = () => {
+      const p = palette();
+      rows.forEach((row, i) => {
+        const c = coins[i];
+        if (!c) return;
+        const ch = fmtChange(c);
+        row.querySelector('.px')!.textContent = fmtPrice(c.h[c.h.length - 1]);
+        const ce = row.querySelector('.ch')!;
+        ce.textContent = ch.text;
+        ce.classList.toggle('up', ch.up);
+        ce.classList.toggle('dn', !ch.up);
+        spark(row.querySelector('canvas')!, c.h, ch.up ? p.earth : p.soft);
+      });
+    };
+
+    const refresh = async () => {
+      try {
+        coins = await Promise.all(syms.map(fetchCoin));
+        note.textContent = '24 hours';
+        ear.dataset.live = '';
+      } catch {
+        // Keep the last live figures if we had them; otherwise the demo set stays, labelled.
+      }
+      render();
+    };
+
+    render();
+    onRelayout(render);
+    poll(refresh, 60_000);
+  }
+</script>

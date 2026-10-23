@@ -1,0 +1,186 @@
+---
+// Pop-up cards: "Take the paper to your agent" after some scrolling, then the Daily Prompt; Support on demand.
+interface Props {
+  number: number;
+  prompt: string;
+}
+
+const { number, prompt } = Astro.props;
+const issue = String(number).padStart(3, '0');
+const site = Astro.site?.href ?? '/';
+const agentPrompt = `Every morning, open ${site} (The Singularity Times) and give me the five main stories in plain language, with one link each. Keep it under two minutes if you read it aloud.`;
+---
+
+<div class="pop" id="pop-agent" data-state="out" role="dialog" aria-labelledby="pa-h">
+  <div class="hd">
+    <canvas data-mini aria-hidden="true"></canvas>
+    <div><div class="k">For your agent</div><h3 id="pa-h">Take the paper to your agent</h3></div>
+    <button class="x" type="button" data-close aria-label="Close">×</button>
+  </div>
+  <p>Every morning your agent can read The Singularity Times and tell you the main stories, by voice or in chat. Copy the prompt and paste it into any assistant.</p>
+  <div class="pbox" id="agent-prompt">{agentPrompt}</div>
+  <div class="acts">
+    <button class="btn" type="button" data-copy="agent-prompt">Copy prompt</button>
+    <button class="btn ghost" type="button" data-close>Not now</button>
+    <span class="ok" aria-live="polite"></span>
+  </div>
+</div>
+
+<div class="pop" id="pop-prompt" data-state="out" role="dialog" aria-labelledby="pp-h">
+  <div class="hd">
+    <canvas data-mini aria-hidden="true"></canvas>
+    <div><div class="k">Daily Prompt, issue {issue}</div><h3 id="pp-h">Today’s quest for your agent</h3></div>
+    <button class="x" type="button" data-close aria-label="Close">×</button>
+  </div>
+  <div class="pbox" id="dp-text">{prompt}</div>
+  <div class="acts">
+    <button class="btn" type="button" data-copy="dp-text">Copy prompt</button>
+    <button class="btn ghost" type="button" data-close>Later</button>
+    <span class="ok" aria-live="polite"></span>
+  </div>
+</div>
+
+<div class="pop" id="pop-support" data-state="out" role="dialog" aria-labelledby="ps-h">
+  <div class="hd">
+    <canvas data-mini aria-hidden="true"></canvas>
+    <div><div class="k">Support</div><h3 id="ps-h">Keep the press running</h3></div>
+    <button class="x" type="button" data-close aria-label="Close">×</button>
+  </div>
+  <p>Placeholder: how readers can support the paper. Options and links will go here once we decide on them.</p>
+  <div class="acts"><button class="btn ghost" type="button" data-close>Close</button></div>
+</div>
+
+<style>
+  .pop {
+    position: fixed; z-index: 40;
+    right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: min(400px, calc(100vw - 32px));
+    background: var(--paper); border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink);
+    padding: 14px; display: grid; gap: 10px; transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+  .pop[data-state='out'] { transform: translateY(24px); opacity: 0; pointer-events: none; visibility: hidden; transition: transform 0.35s ease, opacity 0.35s ease, visibility 0s 0.35s; }
+  .hd { display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: center; }
+  canvas { width: 72px; height: 72px; border-radius: 50%; }
+  .k { font: italic 400 13px/1.2 var(--f-body); color: var(--earth); }
+  h3 { margin: 2px 0 0; font: 800 20px/1.08 var(--f-body); }
+  .x { align-self: start; border: 0; background: none; cursor: pointer; font: 500 18px/1 var(--f-mono); padding: 2px 4px; }
+  p { margin: 0; }
+  .pbox {
+    font: 400 12px/1.45 var(--f-mono); background: var(--paper-deep); padding: 9px 10px;
+    white-space: pre-wrap; max-height: 140px; overflow: auto; user-select: all;
+  }
+  @media (prefers-reduced-motion: reduce) { .pop, .pop[data-state='out'] { transition: none; } }
+</style>
+
+<script>
+  import { DPR, fit, onRelayout, palette, reducedMotion } from '../lib/canvas';
+  import { advanceSpin, emblemView, globe, hasMask } from '../lib/emblem';
+
+  // Small medallion in each card's header: guilloche ring around the engraved globe.
+  function drawMini(cv: HTMLCanvasElement) {
+    const p = palette();
+    const [w, h] = fit(cv);
+    const c = cv.getContext('2d')!;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.clearRect(0, 0, w, h);
+    c.save();
+    c.translate(w / 2, h / 2);
+    const ro = w / 2 - 2;
+    c.strokeStyle = p.ink;
+    c.lineWidth = 0.42;
+    for (let i = 0; i < 8; i++) {
+      c.beginPath();
+      for (let j = 0; j <= 360; j++) {
+        const th = (j / 360) * Math.PI * 2;
+        const r = ro * 0.86 + ro * 0.13 * (0.5 + 0.5 * Math.sin(13 * th + (i * Math.PI) / 4));
+        j ? c.lineTo(r * Math.cos(th), r * Math.sin(th)) : c.moveTo(r * Math.cos(th), r * Math.sin(th));
+      }
+      c.closePath();
+      c.stroke();
+    }
+    for (const [r, lw] of [[ro, 1.1], [ro * 0.84, 0.6], [ro * 0.76, 1]]) {
+      c.beginPath();
+      c.arc(0, 0, r, 0, Math.PI * 2);
+      c.lineWidth = lw;
+      c.stroke();
+    }
+    if (hasMask()) globe(c, ro * 0.72, emblemView().lon, 0.35, 2.2, p.earth);
+    c.restore();
+  }
+  const minis = [...document.querySelectorAll<HTMLCanvasElement>('canvas[data-mini]')];
+  const drawMinis = () => minis.forEach((cv) => cv.closest<HTMLElement>('.pop')?.dataset.state === 'in' && drawMini(cv));
+  onRelayout(drawMinis);
+
+  // The Earth spins slowly in the open card's medallion too: every display frame while a card is open, never with reduced motion.
+  let spinRaf = 0;
+  const anyOpen = () => minis.some((cv) => cv.closest<HTMLElement>('.pop')?.dataset.state === 'in');
+  const spin = (t: number) => {
+    spinRaf = 0;
+    if (!anyOpen() || document.hidden || reducedMotion()) return;
+    advanceSpin(t);
+    drawMinis();
+    spinRaf = requestAnimationFrame(spin);
+  };
+  const startSpin = () => {
+    if (!spinRaf && anyOpen() && !reducedMotion()) spinRaf = requestAnimationFrame(spin);
+  };
+  document.addEventListener('visibilitychange', startSpin);
+
+  const store = {
+    get: (k: string) => { try { return sessionStorage.getItem(k); } catch { return null; } },
+    set: (k: string, v: string) => { try { sessionStorage.setItem(k, v); } catch { /* storage blocked */ } },
+  };
+  const pops: Record<string, HTMLElement | null> = {
+    agent: document.getElementById('pop-agent'),
+    prompt: document.getElementById('pop-prompt'),
+    support: document.getElementById('pop-support'),
+  };
+
+  function open(name: string) {
+    for (const [k, el] of Object.entries(pops)) if (el) el.dataset.state = k === name ? 'in' : 'out';
+    store.set('seen-' + name, '1');
+    drawMinis();
+    startSpin();
+  }
+  const closeAll = () => Object.values(pops).forEach((el) => el && (el.dataset.state = 'out'));
+
+  document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeAll));
+  document.querySelectorAll<HTMLElement>('[data-pop]').forEach((b) => b.addEventListener('click', () => open(b.dataset.pop!)));
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
+
+  // Copy buttons anywhere on the page: data-copy names the element whose text is copied.
+  document.querySelectorAll<HTMLElement>('[data-copy]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const el = document.getElementById(b.dataset.copy!);
+      const ok = b.parentElement?.querySelector('.ok');
+      if (!el) return;
+      const done = (m: string) => {
+        if (!ok) return;
+        ok.textContent = m;
+        setTimeout(() => (ok.textContent = ''), 2400);
+      };
+      const select = () => {
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        const s = getSelection();
+        s?.removeAllRanges();
+        s?.addRange(r);
+        done('Selected, press Ctrl+C');
+      };
+      if (navigator.clipboard) navigator.clipboard.writeText(el.textContent ?? '').then(() => done('Copied'), select);
+      else select();
+    }),
+  );
+
+  let scrolled = 0;
+  addEventListener(
+    'scroll',
+    () => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      scrolled = Math.max(scrolled, max > 0 ? scrollY / max : 0);
+      if (scrolled > 0.22 && !store.get('seen-agent')) open('agent');
+      else if (scrolled > 0.7 && store.get('seen-agent') && !store.get('seen-prompt') && pops.agent?.dataset.state === 'out') open('prompt');
+    },
+    { passive: true },
+  );
+</script>

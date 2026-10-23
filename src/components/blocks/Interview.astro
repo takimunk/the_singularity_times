@@ -1,0 +1,58 @@
+---
+// YouTube facade: a still and a play button; the privacy-enhanced player loads only on click.
+import Icon from '../Icon.astro';
+
+interface Props {
+  title: string;
+  url: string;
+  duration?: string;
+  quote?: string;
+  note?: string;
+}
+
+const { title, url, duration, quote, note } = Astro.props;
+const u = new URL(url);
+const id = u.hostname === 'youtu.be' ? u.pathname.slice(1) : u.searchParams.get('v') ?? undefined;
+const start = Number.parseInt(u.searchParams.get('t') ?? '0', 10) || 0;
+---
+
+<article>
+  <div class="sect"><Icon name="youtube" /> Interview</div>
+  <div class="media" data-yt={id} data-start={start}>
+    {id ? <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" loading="lazy" decoding="async" /> : <span class="hatch" aria-hidden="true"></span>}
+    {id ? (
+      <button class="play" type="button" aria-label={`Play: ${title}`}></button>
+    ) : (
+      <a class="play" href={url} target="_blank" rel="noopener" aria-label={`Watch on YouTube: ${title}`}></a>
+    )}
+    {duration && <span class="dur">{duration}</span>}
+  </div>
+  <h3>{title}</h3>
+  {quote && <blockquote>{quote}</blockquote>}
+  {note && <p class="s">{note}</p>}
+</article>
+
+<style>
+  .hatch { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, var(--ink-soft) 0 1px, transparent 1px 4px); opacity: 0.4; }
+  .play {
+    position: absolute; inset: 0; margin: auto; width: 46px; height: 46px; border-radius: 50%;
+    background: var(--paper); border: 1px solid var(--ink); display: grid; place-items: center; cursor: pointer;
+  }
+  .play::after {
+    content: ''; border-left: 13px solid var(--ink); border-top: 8px solid transparent; border-bottom: 8px solid transparent; margin-left: 3px;
+  }
+  .dur { position: absolute; right: 0; bottom: 0; background: var(--paper); font: 500 11px/1 var(--f-mono); padding: 3px 5px; }
+  blockquote { margin: 0 0 6px; font: italic 400 15px/1.35 var(--f-body); }
+</style>
+
+<script>
+  for (const box of document.querySelectorAll<HTMLElement>('.media[data-yt]')) {
+    box.querySelector('button.play')?.addEventListener('click', () => {
+      const f = document.createElement('iframe');
+      f.src = `https://www.youtube-nocookie.com/embed/${box.dataset.yt}?autoplay=1&start=${box.dataset.start ?? 0}`;
+      f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+      f.title = 'YouTube video player';
+      box.replaceChildren(f);
+    });
+  }
+</script>
