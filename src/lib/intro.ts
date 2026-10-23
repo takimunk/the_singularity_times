@@ -1,4 +1,4 @@
-// Intro (brand v9, Rei Ayanami): the heliocentric Solar System as it stands today, one exponential zoom into Earth
+// Intro (brand v10, Rei Ayanami): the heliocentric Solar System as it stands today, one exponential zoom into Earth
 // landing exactly on the emblem's globe, a 700 ms dissolve, then the emblem's exponentials grow out of the base rule.
 // Production rules: once per session, never with prefers-reduced-motion, the page stays usable underneath
 // (the overlay takes no pointer events; click, key, wheel or touch skips to the landing).
@@ -48,7 +48,7 @@ const PLAN: [string, string, string | null, number][] = [
 const SUN_FIRE = '#F0781E'; // fallback for --sun-glow
 const FLAT = 0.5;
 const ZOOM = 70;
-const DUR = { sys: 1400, zoom: 3000, fade: 700, grow: 1600 };
+const DUR = { sys: 1400, zoom: 3000, fade: 700, grow: 1900 };
 const TZ = DUR.sys * 0.7 + DUR.zoom; // landing time
 
 /** Distances drawn as sqrt(AU) so Mercury and Neptune share a page. */
@@ -75,7 +75,7 @@ const clamp01 = (u: number) => Math.max(0, Math.min(1, u));
 const ISTARS = (() => {
   const r = rng(7);
   const S: [number, number, number, number, number][] = [];
-  for (let i = 0; i < 520; i++) S.push([r(), r(), 0.2 + 0.6 * r(), r() < 0.9 ? 1 : 1.5, r()]);
+  for (let i = 0; i < 170; i++) S.push([r(), r(), 0.2 + 0.6 * r(), r() < 0.9 ? 1 : 1.5, r()]);
   return S;
 })();
 
@@ -202,7 +202,7 @@ export function playIntro(cv: HTMLCanvasElement, force = false): Promise<void> {
       const start = performance.now() + 150;
       const step = (now: number) => {
         const u = clamp01((now - start) / DUR.grow);
-        setWingGrowth(1 - Math.pow(1 - u, 3));
+        setWingGrowth(easeIO(u)); // the flat rule bends upward, every point rising vertically, each display frame
         if (u < 1) requestAnimationFrame(step);
         else resolve();
       };
@@ -344,16 +344,6 @@ export function playIntro(cv: HTMLCanvasElement, force = false): Promise<void> {
         }
         c.globalAlpha = 1;
       }
-      if (label > 0) {
-        c.globalAlpha = label;
-        c.font = `italic 13px ${body}`;
-        c.fillStyle = pal.soft;
-        c.textAlign = 'center';
-        c.fillText('The Solar System, as it stands today', vw / 2, vh - 28);
-        c.textAlign = 'left';
-        c.globalAlpha = 1;
-      }
-
       // Land: the overlay dissolves into the page, where the emblem's Earth is already waiting.
       const f = clamp01((t - TZ) / DUR.fade);
       cv.style.opacity = String(1 - f);

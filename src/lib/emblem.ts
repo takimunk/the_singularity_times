@@ -16,11 +16,13 @@ const BASE = SH - 6.5; // where the base rule's centre should sit, CSS px from t
 const RULE_W = 1; // base rule, CSS px (v9: a single 1 px rule)
 const RO = 34; // guilloche ring radius
 const ROUT = RO + 2.6; // outer ring, tangent to the base rule
+const RG = RO * 0.8; // globe radius (v10)
 const MAX_W = 520;
+const DW = 520; // design width; SH is the design height
 const EAR_MIN = 200;
 const GAP = 20;
 const D2R = Math.PI / 180;
-const FRAME_MS = 50; // at most ~20 fps
+const SPIN = (2 * Math.PI) / 90000; // rad per ms: one turn in 90 s
 const EMBER_FALLBACK = '#e8301f'; // used only if brand.css fails to load
 
 /* Visitor's place, guessed from the time zone (no location permission needed). */
@@ -131,15 +133,19 @@ const ring = (c: CanvasRenderingContext2D, r: number, w: number) => {
 };
 
 /* ---------- State ---------- */
+// The emblem is drawn in a fixed design space of DW x SH units (520 x 100, = CSS px on desktop) and scaled
+// uniformly to the available width, so a phone gets the same composition, never a squeezed one.
 interface Geometry {
   dpr: number;
+  sc: number; // CSS px per design unit (1 on desktop)
+  k: number; // device px per design unit
   SW: number; // canvas CSS width
-  cx: number; // ring centre, CSS px from the canvas's top left
+  cx: number; // ring centre, design units from the canvas's top left
   cy: number;
-  baseY: number; // centre of the base rule, CSS px
+  baseY: number; // centre of the base rule, design units
   ruleRow: number; // first device row of the base rule
   ruleRows: number; // its thickness in device rows
-  x1: number; // half-span of the wings
+  x1: number; // half-span of the wings, design units
 }
 
 let canvas: HTMLCanvasElement | null = null;
@@ -151,34 +157,38 @@ let ember = EMBER_FALLBACK;
 let growth = 1;
 const HERE = guessHere();
 let lon = HERE[1] * D2R;
+let dragging = false;
+let spunAt = 0;
 let tilt = Math.max(-1, Math.min(1, HERE[0] * D2R));
 
 /** Device-pixel layout of the canvas and the base rule. */
 function measure(): Geometry {
   const dpr = deviceScale();
-  const avail = mast?.clientWidth ?? MAX_W;
+  // .mast is display: contents on phones, so measure the masthead around it.
+  const avail = mast?.parentElement?.clientWidth || mast?.clientWidth || MAX_W;
   const narrow = matchMedia('(max-width: 980px)').matches;
   const SW = 2 * Math.floor(Math.max(160, Math.min(MAX_W, narrow ? avail : avail - 2 * (EAR_MIN + GAP))) / 2); // even: centre on a whole px
-  const ruleRows = Math.max(1, Math.round(RULE_W * dpr));
-  const ruleRow = Math.round(BASE * dpr - ruleRows / 2);
-  const baseY = (ruleRow + ruleRows / 2) / dpr;
-  return { dpr, SW, cx: SW / 2, cy: baseY - ROUT, baseY, ruleRow, ruleRows, x1: SW / 2 - 4 };
+  const sc = SW / DW;
+  const k = dpr * sc;
+  const ruleRows = Math.max(1, Math.round(RULE_W * k));
+  const ruleRow = Math.round(BASE * k - ruleRows / 2);
+  const baseY = (ruleRow + ruleRows / 2) / k;
+  return { dpr, sc, k, SW, cx: DW / 2, cy: baseY - ROUT, baseY, ruleRow, ruleRows, x1: DW / 2 - 4 };
 }
 
 /**
- * Wing curve, centred on the ring: y rises from the base rule as e^x out to side*x1.
- * Growth p (0..1) draws the curve out from the ring toward the tip, as in the v9 prototype's `grow`.
+ * Wing curve, centred on the ring: the full-width curve y = base - H(s)*p, H rising as e^x out to side*x1.
+ * Growth p (0..1) lifts every point vertically from the flat base rule (v10).
  */
 function wingCurve(g: Geometry, side: number, p: number): [number, number][] {
   const base = ROUT;
   const k = 3.6;
   const hMax = base + g.cy - 4;
   const P: [number, number][] = [];
-  for (let i = 0; i <= 260 * p; i++) {
+  for (let i = 0; i <= 260; i++) {
     const s = i / 260;
-    P.push([side * s * g.x1, base - (hMax * (Math.exp(k * s) - 1)) / (Math.exp(k) - 1)]);
+    P.push([side * s * g.x1, base - ((hMax * (Math.exp(k * s) - 1)) / (Math.exp(k) - 1)) * p]);
   }
-  if (P.length < 2) P.push([side * 0.5, base]);
   return P;
 }
 
@@ -194,60 +204,68 @@ function drawLayer() {
   const g = geo;
   const { ink, paper } = pal;
   layer ??= document.createElement('canvas');
-  layer.width = canvas.width;
-  layer.height = canvas.height;
+  if (layer.width !== canvas.width || layer.height !== canvas.height) {
+    layer.width = canvas.width;
+    layer.height = canvas.height;
+  }
   const c = layer.getContext('2d');
   if (!c) return;
-  c.setTransform(g.dpr, 0, 0, g.dpr, 0, 0);
-  c.clearRect(0, 0, g.SW, SH);
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.clearRect(0, 0, layer.width, layer.height);
+  c.setTransform(g.k, 0, 0, g.k, 0, 0);
   c.save();
   c.translate(g.cx, g.cy);
   const [L, Rt] = [wingCurve(g, -1, growth), wingCurve(g, 1, growth)];
   const top = -g.cy; // canvas top
+  const base = ROUT;
+  const hMax = base + g.cy - 4;
 
   // The open sky: sparse pixel stars only inside the bowl, i.e. above both curves (1.5 px clear of them),
-  // between the curves' ends (never past the wing tips), below the canvas top, outside the medallion.
-  c.save();
-  c.beginPath();
-  c.moveTo(L[L.length - 1][0], top);
-  for (let i = L.length - 1; i >= 0; i--) c.lineTo(L[i][0], L[i][1] - 1.5);
-  for (const [x, y] of Rt) c.lineTo(x, y - 1.5);
-  c.lineTo(Rt[Rt.length - 1][0], top);
-  c.closePath();
-  c.clip();
-  c.beginPath();
-  c.rect(-g.x1, top, 2 * g.x1, ROUT - top);
-  c.moveTo(ROUT + 3, 0);
-  c.arc(0, 0, ROUT + 3, 0, Math.PI * 2);
-  c.clip('evenodd');
-  c.fillStyle = ink;
-  const r = rng(2026);
-  for (let i = 0; i < 260; i++) {
-    const x = (r() - 0.5) * g.SW;
-    const y = top + Math.pow(r(), 0.75) * SH;
-    c.globalAlpha = (0.35 + 0.65 * r()) * growth;
-    const big = r() >= 0.9;
-    c.fillRect(Math.round(x), Math.round(y + g.cy) - g.cy, big ? 1.5 : 1, big ? 1.5 : 1); // whole CSS px
+  // between the wing tips, below the canvas top, outside the medallion. They fade in as the bowl opens.
+  if (growth > 0) {
+    c.save();
+    c.beginPath();
+    c.moveTo(L[L.length - 1][0], top);
+    for (let i = L.length - 1; i >= 0; i--) c.lineTo(L[i][0], L[i][1] - 1.5);
+    for (const [x, y] of Rt) c.lineTo(x, y - 1.5);
+    c.lineTo(Rt[Rt.length - 1][0], top);
+    c.closePath();
+    c.clip();
+    c.beginPath();
+    c.rect(-g.x1, top, 2 * g.x1, base - top);
+    c.moveTo(ROUT + 3, 0);
+    c.arc(0, 0, ROUT + 3, 0, Math.PI * 2);
+    c.clip('evenodd');
+    c.fillStyle = ink;
+    c.setTransform(1, 0, 0, 1, 0, 0); // stars land on whole device pixels; the clip stays in force
+    const r = rng(2026);
+    for (let i = 0; i < 260; i++) {
+      const x = (r() - 0.5) * DW;
+      const y = top + Math.pow(r(), 0.75) * SH;
+      c.globalAlpha = (0.35 + 0.65 * r()) * growth;
+      const z = Math.max(1, Math.round((r() >= 0.9 ? 1.5 : 1) * g.k));
+      c.fillRect(Math.round((g.cx + x) * g.k), Math.round((g.cy + y) * g.k), z, z);
+    }
+    c.globalAlpha = 1;
+    c.restore();
   }
-  c.globalAlpha = 1;
-  c.restore();
 
-  // Wings: contour lines inside each curve, the curve itself, and a vertical at its end. No secondary hairline.
+  // Wings: "taper" contour lines (closing up toward the curve), the curve itself, heavier where it leaves
+  // the Earth, an inner hairline, and a vertical at the tip.
   c.strokeStyle = ink;
   [L, Rt].forEach((P, i) => {
     const side = i ? 1 : -1;
     const end = P[P.length - 1];
-    const hMax = ROUT - end[1];
-    if (hMax > 0.01) {
+    if (growth > 0) {
       c.save();
       c.beginPath();
       wingPath(c, P, side, g.x1);
       c.clip();
       c.lineWidth = 0.42;
-      for (let off = 2.4; off < hMax + 6; off += 2.4) {
+      for (let off = 1.4, gap = 1.4; off < hMax + 6; gap *= 1.09, off += gap) {
         c.beginPath();
         P.forEach(([x, y], j) => {
-          const yy = Math.min(ROUT, y + off);
+          const yy = Math.min(base, y + off);
           if (j) c.lineTo(x, yy);
           else c.moveTo(x, yy);
         });
@@ -255,13 +273,33 @@ function drawLayer() {
       }
       c.restore();
     }
+    // Stroke width 1.15 + 1.25*(1 - s)^1.6, s = 0 at the ring and 1 at the tip, round caps.
+    c.lineCap = 'round';
+    for (let j = 0; j < P.length - 1; j += 2) {
+      const sN = j / (P.length - 1);
+      const k = Math.min(P.length - 1, j + 2);
+      c.beginPath();
+      c.moveTo(P[j][0], P[j][1]);
+      c.lineTo(P[j + 1][0], P[j + 1][1]);
+      c.lineTo(P[k][0], P[k][1]);
+      c.lineWidth = 1.15 + 1.25 * Math.pow(1 - sN, 1.6);
+      c.stroke();
+    }
+    c.lineCap = 'butt';
+    // Inner hairline, hidden wherever it would sit on or below the base rule.
     c.beginPath();
-    P.forEach(([x, y], j) => (j ? c.lineTo(x, y) : c.moveTo(x, y)));
-    c.lineWidth = 1.3;
-    c.stroke();
+    let started = false;
+    for (const [x, y] of P) {
+      if (Math.abs(x) < ROUT * 0.9 || y + 3.2 > base) continue;
+      if (started) c.lineTo(x - side * 0.6, y + 2.6);
+      else c.moveTo(x - side * 0.6, y + 2.6);
+      started = true;
+    }
+    c.lineWidth = 0.45;
+    if (started) c.stroke();
     c.beginPath();
     c.moveTo(end[0], end[1]);
-    c.lineTo(end[0], ROUT);
+    c.lineTo(end[0], base);
     c.lineWidth = 1;
     c.stroke();
   });
@@ -271,26 +309,25 @@ function drawLayer() {
   c.save();
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.fillStyle = ink;
-  c.fillRect(0, g.ruleRow, Math.round(g.SW * g.dpr), g.ruleRows); // full emblem width, as in v9
+  c.fillRect(0, g.ruleRow, layer.width, g.ruleRows); // full emblem width
   c.restore();
 
-  // Medallion: paper disc over the wings, guilloche, rings and the tick bezel.
+  // Medallion (v10, slimmer): paper disc over the wings, one guilloche band, three rings, no tick bezel.
   c.save();
   c.translate(g.cx, g.cy);
-  const R = RO * 0.72;
   c.fillStyle = paper;
   c.beginPath();
   c.arc(0, 0, ROUT + 1.5, 0, Math.PI * 2);
   c.fill();
   c.strokeStyle = ink;
-  const gIn = RO * 0.86;
-  const gOut = RO * 0.985;
-  c.lineWidth = 0.42;
-  for (let i = 0; i < 8; i++) {
+  const gIn = RG + 2.6;
+  const gOut = RO - 0.6;
+  c.lineWidth = 0.32;
+  for (let i = 0; i < 6; i++) {
     c.beginPath();
     for (let j = 0; j <= 540; j++) {
       const th = (j / 540) * Math.PI * 2;
-      const rr = gIn + (gOut - gIn) * (0.5 + 0.5 * Math.sin(13 * th + (i * 2 * Math.PI) / 8));
+      const rr = gIn + (gOut - gIn) * (0.5 + 0.5 * Math.sin(17 * th + (i * 2 * Math.PI) / 6));
       const x = rr * Math.cos(th);
       const y = rr * Math.sin(th);
       if (j) c.lineTo(x, y);
@@ -299,26 +336,12 @@ function drawLayer() {
     c.closePath();
     c.stroke();
   }
-  ring(c, RO, 0.45);
-  ring(c, ROUT, 1.3);
-  ring(c, gIn - 1.5, 0.6);
-  const tIn = R + 4;
-  const tOut = gIn - 3.5;
-  for (let i = 0; i < 72; i++) {
-    const a = (i / 72) * Math.PI * 2;
-    const long = i % 6 === 0;
-    const r0 = long ? tIn : tIn + (tOut - tIn) * 0.45;
-    c.beginPath();
-    c.moveTo(r0 * Math.cos(a), r0 * Math.sin(a));
-    c.lineTo(tOut * Math.cos(a), tOut * Math.sin(a));
-    c.lineWidth = long ? 0.9 : 0.42;
-    c.stroke();
-  }
-  ring(c, tOut, 0.6);
-  ring(c, R + 2.5, 1.2);
+  ring(c, RO, 0.4);
+  ring(c, ROUT, 0.8);
+  ring(c, RG + 1.3, 0.75);
   c.fillStyle = paper;
   c.beginPath();
-  c.arc(0, 0, R, 0, Math.PI * 2);
+  c.arc(0, 0, RG, 0, Math.PI * 2);
   c.fill();
   c.restore();
 }
@@ -332,10 +355,10 @@ function drawFrame(t = 0) {
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.clearRect(0, 0, canvas.width, canvas.height);
   c.drawImage(layer, 0, 0);
-  c.setTransform(g.dpr, 0, 0, g.dpr, 0, 0);
+  c.setTransform(g.k, 0, 0, g.k, 0, 0);
   c.save();
   c.translate(g.cx, g.cy);
-  const R = RO * 0.72;
+  const R = RG;
   globe(c, R, lon, tilt, Math.max(1.6, R / 15), pal.earth);
   // You are here: a small ember with a soft glow and a barely visible pulse.
   const ph = HERE[0] * D2R;
@@ -377,10 +400,10 @@ function layout() {
   pal = palette();
   ember = cssVar('--ember') || EMBER_FALLBACK;
   geo = measure();
+  canvas.width = Math.round(DW * geo.k);
+  canvas.height = Math.round(SH * geo.k);
   canvas.style.width = `${geo.SW}px`;
-  canvas.style.height = `${SH}px`;
-  canvas.width = Math.round(geo.SW * geo.dpr);
-  canvas.height = Math.round(SH * geo.dpr);
+  canvas.style.height = `${canvas.height / geo.dpr}px`;
   // The ears end exactly where the base rule ends: same device rows, same thickness.
   mast.style.setProperty('--emh', `${(geo.ruleRow + geo.ruleRows) / geo.dpr}px`);
   mast.style.setProperty('--rule-w', `${geo.ruleRows / geo.dpr}px`);
@@ -414,11 +437,22 @@ export function emblemView(): { lon: number; tilt: number } {
   return { lon, tilt };
 }
 
+/**
+ * Advances the slow west-to-east spin to time t (rAF timestamp): one turn in 90 s, paused while dragging,
+ * off under reduced motion. Idempotent per timestamp, so the emblem and the pop-up globes can both call it.
+ */
+export function advanceSpin(t: number) {
+  const dt = spunAt ? Math.max(0, Math.min(100, t - spunAt)) : 0;
+  spunAt = t;
+  if (!dragging && !reducedMotion()) lon -= SPIN * dt;
+}
+
 /** Where the Earth sits, in CSS px relative to the viewport, for an intro that lands a planet in the emblem. */
 export function emblemGeometry(): { x: number; y: number; r: number; ringR: number; baseY: number } | null {
   if (!canvas || !geo) return null;
   const rc = canvas.getBoundingClientRect();
-  return { x: rc.left + geo.cx, y: rc.top + geo.cy, r: RO * 0.72, ringR: ROUT, baseY: rc.top + geo.baseY };
+  const sc = rc.width / DW; // live, in case the canvas is mid-relayout
+  return { x: rc.left + geo.cx * sc, y: rc.top + geo.cy * sc, r: RG * sc, ringR: ROUT * sc, baseY: rc.top + geo.baseY * sc };
 }
 
 /** Mounts the emblem on its canvas; mastEl receives --emh and --rule-w for the ears. */
@@ -442,6 +476,7 @@ export function mountEmblem(cv: HTMLCanvasElement, mastEl: HTMLElement) {
   };
   cv.addEventListener('pointerdown', (e) => {
     drag = { x: e.clientX, y: e.clientY, lon, tilt };
+    dragging = true;
     cv.setPointerCapture(e.pointerId);
   });
   cv.addEventListener('pointermove', (e) => {
@@ -452,21 +487,20 @@ export function mountEmblem(cv: HTMLCanvasElement, mastEl: HTMLElement) {
   });
   const endDrag = () => {
     drag = null;
+    dragging = false;
   };
   cv.addEventListener('pointerup', endDrag);
   cv.addEventListener('pointercancel', endDrag);
 
-  // The pulse: at most ~20 fps, only while the emblem is on screen and the tab is visible, never with reduced motion.
+  // Spin and pulse: every display frame, only while the emblem is on screen and the tab is visible,
+  // never with reduced motion (then the emblem is drawn once and on drag).
   let visible = true;
   let raf = 0;
-  let last = 0;
   const frame = (t: number) => {
     raf = 0;
     if (!running()) return;
-    if (!drag && t - last >= FRAME_MS) {
-      last = t;
-      drawFrame(t);
-    }
+    advanceSpin(t);
+    if (!drag) drawFrame(t);
     raf = requestAnimationFrame(frame);
   };
   const running = () => visible && !document.hidden && !reducedMotion();
