@@ -1,0 +1,40 @@
+---
+interface Props {
+  headline: string;
+  deck: string;
+  byline?: string;
+  art?: { src: string; alt: string; caption?: string; width?: number; height?: number };
+  placeholder?: boolean;
+}
+
+const { headline, deck, byline, art, placeholder } = Astro.props;
+---
+
+<article class="lead">
+  <div class="sect">Front page{placeholder && <span class="note">placeholder</span>}</div>
+  <figure class="media">
+    {art ? (
+      <img src={art.src} alt={art.alt} width={art.width} height={art.height} loading="eager" fetchpriority="high" decoding="async" />
+    ) : (
+      <span class="hatch" aria-hidden="true"></span>
+    )}
+    <figcaption class="cap">{art?.caption ?? 'Cover art by Dima. Image or video goes here'}</figcaption>
+  </figure>
+  <h2>{headline}</h2>
+  <p class="deck">{deck}</p>
+  <div class="body"><slot /></div>
+  {byline && <div class="byl">{byline}</div>}
+</article>
+
+<style>
+  .media { aspect-ratio: 2 / 1; }
+  .hatch {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, var(--earth) 0 1.2px, transparent 1.2px 5px);
+    opacity: 0.55;
+  }
+  h2 { font: 800 clamp(24px, 3vw, 36px)/1.04 var(--f-body); letter-spacing: -0.01em; margin: 10px 0 4px; }
+  .deck { font: italic 400 16px/1.35 var(--f-body); color: var(--ink-soft); margin: 0 0 8px; max-width: 62ch; }
+  .body { columns: 2 220px; column-gap: 20px; column-rule: 1px solid var(--hair); hyphens: auto; }
+  .body :global(p) { margin: 0 0 0.6em; }
+</style>

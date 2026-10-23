@@ -1,0 +1,29 @@
+---
+interface Props {
+  page: number;
+  pages: number;
+}
+
+const { page, pages } = Astro.props;
+---
+
+<nav class="pager" aria-label="Pages">
+  <a class="btn ghost prev" href="#top" aria-disabled={page <= 1 ? 'true' : undefined}>Previous page</a>
+  <span class="pn">Page <b>{page}</b> of <b>{pages}</b></span>
+  <a class="btn next" href="#top" aria-disabled={page >= pages ? 'true' : undefined}>Next page</a>
+</nav>
+
+<style>
+  .pager {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
+    margin-top: 10px; padding-top: 8px; border-top: 3px solid var(--ink);
+  }
+  .pn { font: italic 400 14px/1 var(--f-body); text-align: center; }
+  .pn b { font: 600 14px/1 var(--f-mono); }
+  .next { justify-self: end; }
+  .prev { justify-self: start; }
+  @media (max-width: 640px) {
+    .pager { grid-template-columns: 1fr 1fr; }
+    .pn { grid-column: 1 / -1; grid-row: 1; }
+  }
+</style>

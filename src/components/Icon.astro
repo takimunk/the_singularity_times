@@ -1,0 +1,14 @@
+---
+// Brand marks from simple-icons, inlined at build time.
+import { siGithub, siX, siYcombinator, siYoutube } from 'simple-icons';
+
+const ICONS = { github: siGithub, x: siX, yc: siYcombinator, youtube: siYoutube };
+
+interface Props {
+  name: keyof typeof ICONS;
+}
+
+const icon = ICONS[Astro.props.name];
+---
+
+<svg class="lg" viewBox="0 0 24 24" aria-hidden="true"><path d={icon.path} /></svg>

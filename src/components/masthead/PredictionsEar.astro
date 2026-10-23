@@ -1,0 +1,139 @@
+---
+// Balthasar: right ear, rotating Polymarket markets (question, "Yes" probability, a week of history).
+// Built with the demo set (labelled "demo"); the script swaps in live markets when they load.
+// The ear's box (height, rule, width, flex column) comes from Masthead.astro.
+import pmLogo from '../../assets/logos/polymarket.svg?raw';
+import { DEFAULT_SLUGS, demoMarkets, fmtPct } from '../../lib/markets';
+
+interface Props {
+  /** Polymarket market slugs; empty means the default AI markets. */
+  slugs?: string[];
+}
+
+const { slugs = [] } = Astro.props;
+const list = slugs.length ? slugs : DEFAULT_SLUGS;
+const demo = demoMarkets();
+const first = demo[0];
+const dots = Math.max(list.length, demo.length);
+const logo = pmLogo.replace('<svg ', '<svg class="lg pm" role="img" aria-label="Polymarket" ');
+---
+
+<aside class="ear r" aria-label="Prediction markets" data-slugs={JSON.stringify(list)}>
+  <h4>
+    Predictions<i class="note">demo</i>
+    <span class="dots" aria-hidden="true">{Array.from({ length: dots }, (_, i) => <i class={i === 0 ? 'on' : ''} hidden={i >= demo.length} />)}</span>
+  </h4>
+  <div class="poly">
+    <div class="qrow">
+      <q>{first.q}</q>
+      <div class="pct"><span class="v">{fmtPct(first.p)}%</span><small>yes</small></div>
+    </div>
+    <canvas aria-hidden="true"></canvas>
+  </div>
+  <div class="by">
+    Data provided by <a href="https://polymarket.com" target="_blank" rel="noopener" set:html={logo} />
+  </div>
+</aside>
+
+<style>
+  h4 { margin: 0; display: flex; align-items: center; gap: 6px; font: 700 14px/1 var(--f-body); }
+  h4 > i { font: italic 400 12px/1 var(--f-body); color: var(--ink-soft); }
+  .dots { display: flex; gap: 4px; margin-left: auto; }
+  .dots i { width: 5px; height: 5px; border: 1px solid var(--ink); border-radius: 50%; }
+  .dots i.on { background: var(--ink); }
+  /* Question and figure side by side; the sparkline takes whatever height the emblem-sized box leaves (12 to 22 px). */
+  .poly { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 3px; }
+  .qrow { display: grid; grid-template-columns: minmax(0, 1fr) 5.2em; gap: 10px; align-items: end; }
+  q {
+    quotes: none;
+    font: 500 14px/1.25 var(--f-body);
+    height: 2.5em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .pct {
+    text-align: right;
+    white-space: nowrap;
+    font: 600 22px/1 var(--f-mono);
+    color: var(--earth);
+    font-variant-numeric: tabular-nums;
+  }
+  .pct small { font: italic 400 12px/1 var(--f-body); color: var(--ink-soft); margin-left: 3px; }
+  canvas { width: 100%; flex: 1 1 22px; min-height: 12px; max-height: 22px; display: block; }
+  .by {
+    height: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font: italic 400 12px/1 var(--f-body);
+    color: var(--ink-soft);
+    border-top: 1px dotted var(--hair);
+    padding-top: 4px;
+    margin-top: 1px;
+    box-sizing: content-box;
+  }
+  .by a { display: inline-flex; align-items: center; color: var(--ink); height: 16px; }
+  .by :global(svg.lg.pm) { height: 15px; }
+</style>
+
+<script>
+  import { onRelayout, palette, reducedMotion } from '../../lib/canvas';
+  import { demoMarkets, fetchMarket, fmtPct, poll, type Market } from '../../lib/markets';
+  import { spark } from '../../lib/sparkline';
+
+  const ear = document.querySelector<HTMLElement>('.ear.r[data-slugs]');
+  if (ear) {
+    const slugs: string[] = JSON.parse(ear.dataset.slugs || '[]');
+    const note = ear.querySelector<HTMLElement>('h4 > .note')!;
+    const dots = [...ear.querySelectorAll<HTMLElement>('.dots i')];
+    const q = ear.querySelector<HTMLElement>('q')!;
+    const cv = ear.querySelector<HTMLCanvasElement>('canvas')!;
+    const pct = ear.querySelector<HTMLElement>('.pct .v')!;
+    const link = ear.querySelector<HTMLAnchorElement>('.by a')!;
+    let markets: Market[] = demoMarkets();
+    let i = 0;
+    let paused = false;
+
+    const show = () => {
+      const m = markets[i % markets.length];
+      q.textContent = m.q;
+      q.title = m.q;
+      pct.textContent = fmtPct(m.p) + '%';
+      link.href = m.url;
+      dots.forEach((d, k) => {
+        d.hidden = k >= markets.length;
+        d.classList.toggle('on', k === i % markets.length);
+      });
+      spark(cv, m.h, palette().earth, true);
+    };
+
+    const refresh = async () => {
+      const got = await Promise.allSettled(slugs.map(fetchMarket));
+      const live = got.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+      if (live.length) {
+        markets = live;
+        note.textContent = '7 days';
+        ear.dataset.live = '';
+      }
+      show();
+    };
+
+    show();
+    onRelayout(show);
+    poll(refresh, 5 * 60_000);
+
+    // Rotate every 7 s; hold still while hovered or focused, or when the reader asks for less motion.
+    ear.addEventListener('pointerenter', () => (paused = true));
+    ear.addEventListener('pointerleave', () => (paused = false));
+    ear.addEventListener('focusin', () => (paused = true));
+    ear.addEventListener('focusout', () => (paused = false));
+    setInterval(() => {
+      if (paused || document.hidden || reducedMotion() || markets.length < 2) return;
+      i = (i + 1) % markets.length;
+      show();
+    }, 7000);
+  }
+</script>

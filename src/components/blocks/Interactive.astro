@@ -1,0 +1,35 @@
+---
+// One playable piece per issue. Issue 000: Freeborn's volumetric cloud deck (src/viz).
+interface Props {
+  id: string;
+  title: string;
+  text: string;
+}
+
+const { id, title, text } = Astro.props;
+---
+
+<section>
+  <div class="sect">Interactive</div>
+  <div class="media viz" data-viz={id}>
+    <canvas aria-label="A cloud deck at dusk, live shader"></canvas>
+    <a class="cap" href="https://x.com/Freeeborn/status/2113362205664215067" target="_blank" rel="noopener">Shader by Freeborn, @Freeeborn</a>
+  </div>
+  <h3>{title}</h3>
+  <p class="s">{text}</p>
+</section>
+
+<style>
+  /* Dusk gradient shown before the shader starts, or instead of it without WebGL2. */
+  .viz { background: linear-gradient(180deg, #14295e 0%, #5f7fc4 55%, #e0743a 78%, #44425f 100%); }
+  .cap { right: 0; left: auto; text-decoration: none; }
+  .cap:hover { text-decoration: underline; }
+</style>
+
+<script>
+  import { startClouds } from '../../viz/clouds';
+
+  for (const canvas of document.querySelectorAll<HTMLCanvasElement>('.viz[data-viz="clouds"] canvas')) {
+    startClouds(canvas);
+  }
+</script>
