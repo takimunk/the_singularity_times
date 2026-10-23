@@ -1,0 +1,25 @@
+/*
+  Brand tokens. Placeholders until the branding thread (Rei Ayanami) delivers
+  the real typefaces, logo and palette. Change values here, not in components.
+*/
+:root {
+  --font-masthead: 'Times New Roman', Times, serif;
+  --font-headline: Georgia, 'Times New Roman', serif;
+  --font-body: Georgia, 'Times New Roman', serif;
+  --font-meta: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --paper: #f7f4ec;
+  --ink: #141414;
+  --ink-muted: #5b5850;
+  --rule: #1a1a1a;
+  --accent: #b3261e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121212;
+    --ink: #ece8de;
+    --ink-muted: #a29d91;
+    --rule: #ece8de;
+  }
+}

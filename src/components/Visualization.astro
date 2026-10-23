@@ -1,0 +1,51 @@
+---
+// One signature visualization per issue. Issue #0: Freeborn's volumetric cloud deck.
+interface Props {
+  id: string;
+}
+
+const { id } = Astro.props;
+---
+
+<figure class="viz" data-viz={id}>
+  <div class="stage">
+    <canvas aria-label="Облачная палуба на закате, живой шейдер"></canvas>
+    <a class="credit" href="https://x.com/Freeeborn/status/2113362205664215067" rel="noopener">
+      Шейдер: Freeborn · @Freeeborn
+    </a>
+  </div>
+</figure>
+
+<style>
+  .viz { margin: 0; }
+  .stage {
+    position: relative;
+    aspect-ratio: 21 / 9;
+    min-height: 240px;
+    overflow: hidden;
+    /* Dusk gradient shown before the shader starts, or instead of it without WebGL2. */
+    background: linear-gradient(180deg, #14295e 0%, #5f7fc4 55%, #e0743a 78%, #44425f 100%);
+  }
+  canvas { width: 100%; height: 100%; display: block; }
+  .credit {
+    position: absolute;
+    right: 12px;
+    bottom: 10px;
+    padding: 4px 8px;
+    font-family: var(--font-meta);
+    font-size: 0.75rem;
+    color: #fff;
+    background: rgb(0 0 0 / 0.45);
+    text-decoration: none;
+    backdrop-filter: blur(4px);
+  }
+  .credit:hover { text-decoration: underline; }
+</style>
+
+<script>
+  import { startClouds } from '../viz/clouds';
+
+  for (const canvas of document.querySelectorAll<HTMLCanvasElement>('.viz canvas')) {
+    startClouds(canvas);
+  }
+</script>

@@ -1,0 +1,94 @@
+---
+// Balthasar: lazy X post embed by URL, never re-uploading the work.
+// The static card is the fallback: X's widgets.js loads only when the card
+// nears the viewport, and the card stays if the script fails or is blocked.
+interface Props {
+  url: string;
+  author: string;
+  note?: string;
+}
+
+const { url, author, note } = Astro.props;
+const tweetId = url.match(/\/status(?:es)?\/(\d+)/)?.[1];
+---
+
+<figure class="x-embed" data-tweet-id={tweetId}>
+  <div class="card">
+    <p class="kicker">Пост в X</p>
+    <p class="author">{author}</p>
+    {note && <p class="note">{note}</p>}
+    <a class="open" href={url} target="_blank" rel="noopener">Открыть в X →</a>
+  </div>
+  <div class="live"></div>
+</figure>
+
+<style>
+  .x-embed { margin: 0; min-width: 0; }
+  .card {
+    border-top: 3px double var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 12px 0 14px;
+  }
+  .author { font-family: var(--font-headline); font-size: 1.25rem; font-weight: 700; margin: 0 0 6px; }
+  .note { font-style: italic; color: var(--ink-muted); margin: 0 0 10px; }
+  .open {
+    font-family: var(--font-meta);
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+  }
+  .live :global(.twitter-tweet) { margin: 0 auto !important; }
+</style>
+
+<script>
+  type Twttr = {
+    widgets: {
+      createTweet(id: string, el: HTMLElement, options?: Record<string, unknown>): Promise<HTMLElement | undefined>;
+    };
+  };
+  const w = window as typeof window & { twttr?: Twttr };
+
+  let loading: Promise<Twttr> | undefined;
+  function loadWidgets(): Promise<Twttr> {
+    loading ??= new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://platform.twitter.com/widgets.js';
+      s.async = true;
+      s.onload = () => (w.twttr?.widgets ? resolve(w.twttr) : reject(new Error('twttr missing')));
+      s.onerror = reject;
+      document.head.append(s);
+    });
+    return loading;
+  }
+
+  async function embed(figure: HTMLElement) {
+    const id = figure.dataset.tweetId;
+    const live = figure.querySelector<HTMLElement>('.live');
+    if (!id || !live) return;
+    try {
+      const twttr = await loadWidgets();
+      const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+      // Drop the card only once X has actually rendered the post.
+      const el = await twttr.widgets.createTweet(id, live, { dnt: true, theme: dark ? 'dark' : 'light' });
+      if (!el) return;
+      figure.querySelector('.card')?.setAttribute('hidden', '');
+    } catch {
+      // Blocked or offline: the static card stays.
+    }
+  }
+
+  const figures = document.querySelectorAll<HTMLElement>('.x-embed[data-tweet-id]');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          io.unobserve(entry.target);
+          embed(entry.target as HTMLElement);
+        }
+      },
+      { rootMargin: '400px 0px' },
+    );
+    figures.forEach((f) => io.observe(f));
+  }
+</script>

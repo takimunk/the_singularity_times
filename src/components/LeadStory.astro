@@ -1,0 +1,84 @@
+---
+// Balthasar: front-page lead story (headline, dek, lead art, body).
+interface Props {
+  headline: string;
+  dek: string;
+  kicker?: string;
+  art?: { src: string; alt: string; credit?: string; width?: number; height?: number };
+}
+
+const { headline, dek, kicker = 'Первая полоса', art } = Astro.props;
+// Reserve the art's box before it loads; 3:2 when the issue gives no size.
+const ratio = art?.width && art?.height ? `${art.width} / ${art.height}` : '3 / 2';
+---
+
+<article class="lead">
+  <p class="kicker">{kicker}</p>
+  <h2 class="headline">{headline}</h2>
+  <p class="dek">{dek}</p>
+  {
+    art && (
+      <figure class="art">
+        <img
+          src={art.src}
+          alt={art.alt}
+          width={art.width}
+          height={art.height}
+          loading="eager"
+          decoding="async"
+          fetchpriority="high"
+          style={`aspect-ratio: ${ratio}`}
+        />
+        {art.credit && <figcaption>{art.credit}</figcaption>}
+      </figure>
+    )
+  }
+  <div class="body">
+    <slot />
+  </div>
+</article>
+
+<style>
+  .lead { padding-top: 16px; }
+  .headline {
+    font-family: var(--font-headline);
+    font-size: clamp(2rem, 5.5vw, 3.75rem);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .dek {
+    font-size: clamp(1.125rem, 2.2vw, 1.375rem);
+    font-style: italic;
+    line-height: 1.35;
+    color: var(--ink-muted);
+    margin: 0 0 20px;
+    text-wrap: pretty;
+  }
+  .art { margin: 0 0 20px; }
+  .art img { width: 100%; height: auto; object-fit: cover; }
+  .art figcaption {
+    font-family: var(--font-meta);
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    text-align: right;
+    padding-top: 6px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 6px;
+  }
+  .body { hyphens: auto; -webkit-hyphens: auto; }
+  .body :global(p) { margin: 0; }
+  .body :global(p + p) { text-indent: 1.5em; }
+  .body :global(:is(h2, h3, ul, ol, blockquote)) { margin: 1em 0; }
+  .body > :global(p:first-child::first-letter) {
+    float: left;
+    font-family: var(--font-headline);
+    font-size: 3.4em;
+    line-height: 0.85;
+    padding: 0.06em 0.08em 0 0;
+  }
+  @media (min-width: 900px) {
+    .body { columns: 2; column-gap: 32px; column-rule: 1px solid var(--rule); text-align: justify; }
+  }
+</style>

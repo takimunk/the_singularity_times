@@ -1,0 +1,45 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Masthead from '../components/Masthead.astro';
+import LeadStory from '../components/LeadStory.astro';
+import XEmbed from '../components/XEmbed.astro';
+import Markets from '../components/Markets.astro';
+import DailyPrompt from '../components/DailyPrompt.astro';
+import Visualization from '../components/Visualization.astro';
+
+const issues = await getCollection('issues');
+const issue = issues.sort((a, b) => b.data.number - a.data.number)[0];
+if (!issue) throw new Error('No issues in /issues');
+
+const { data } = issue;
+const { Content } = await render(issue);
+---
+
+<Base title={`${data.headline} · The Singularity Times`} description={data.dek} image={data.leadArt?.src}>
+  <Masthead number={data.number} date={data.date} />
+  <main class="grid">
+    <div class="span-2">
+      <LeadStory headline={data.headline} dek={data.dek} art={data.leadArt}>
+        <Content />
+      </LeadStory>
+    </div>
+    <aside>
+      <Markets slugs={data.markets} />
+      {data.prompt && <DailyPrompt {...data.prompt} />}
+    </aside>
+    {data.visualization && (
+      <div class="span-3">
+        <Visualization id={data.visualization} />
+      </div>
+    )}
+    {data.works.length > 0 && (
+      <section class="span-3">
+        <h3 class="section-title">Работы авторов</h3>
+        <div class="grid">
+          {data.works.map((work) => <XEmbed {...work} />)}
+        </div>
+      </section>
+    )}
+  </main>
+</Base>

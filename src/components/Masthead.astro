@@ -1,0 +1,42 @@
+---
+// The logo and nameplate typeface come from the branding thread; until then this is text.
+interface Props {
+  number: number;
+  date: Date;
+}
+
+const { number, date } = Astro.props;
+const dateLabel = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+---
+
+<header class="masthead">
+  <div class="meta">
+    <span>Выпуск №{number}</span>
+    <span>{dateLabel}</span>
+  </div>
+  <h1 class="nameplate">The Singularity Times</h1>
+  <p class="motto">Хроника эпохи AGI</p>
+</header>
+
+<style>
+  .masthead { text-align: center; padding-top: 24px; border-bottom: 3px double var(--rule); }
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-meta);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 8px;
+  }
+  .nameplate {
+    font-family: var(--font-masthead);
+    font-weight: 700;
+    font-size: clamp(2.25rem, 8vw, 5.5rem);
+    line-height: 1;
+    margin: 20px 0 8px;
+  }
+  .motto { font-style: italic; color: var(--ink-muted); margin: 0 0 16px; }
+</style>
