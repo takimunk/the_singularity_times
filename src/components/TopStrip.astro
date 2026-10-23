@@ -1,0 +1,57 @@
+---
+import Icon from './Icon.astro';
+---
+
+<header class="top">
+  <span></span>
+  <span class="clock"><time class="t" id="clk">0000-00-00 00:00:00<span class="ms">.000</span></time></span>
+  <span class="icons">
+    <button class="icon" type="button" data-pop="agent" title="Read the paper through your agent (MCP)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M5 1v4M11 1v4M3 5h10v3a5 5 0 0 1-10 0V5zM8 13v2"></path></svg><span class="lab">MCP</span>
+    </button>
+    <a class="icon" href="https://github.com/takimunk/the_singularity_times" target="_blank" rel="noopener" title="Source code on GitHub"><Icon name="github" /><span class="lab">GitHub</span></a>
+    <button class="icon" type="button" data-pop="support" title="Support the paper">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M8 14S2 10.2 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4.2-6 8-6 8z"></path></svg><span class="lab">Support</span>
+    </button>
+  </span>
+</header>
+
+<style>
+  .top {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--ink); padding-bottom: 6px; font: 400 14px/1.3 var(--f-body);
+  }
+  .clock { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .t { font: 600 14px/1 var(--f-mono); }
+  .ms { color: var(--earth); }
+  .icons { justify-self: end; display: flex; gap: 4px; }
+  .icon {
+    display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px;
+    border: 1px solid var(--ink); background: none; cursor: pointer; font: 500 12px/1 var(--f-body); text-decoration: none;
+  }
+  .icon:hover { background: var(--ink); color: var(--paper); }
+  .icon :global(svg) { width: 13px; height: 13px; }
+  @media (max-width: 640px) {
+    .top { grid-template-columns: 1fr auto; row-gap: 6px; }
+    .clock { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
+    .lab { display: none; }
+  }
+</style>
+
+<script>
+  // Local time, no time zone label; milliseconds in spot blue.
+  const clk = document.getElementById('clk');
+  if (clk) {
+    const text = clk.firstChild as Text;
+    const ms = clk.lastElementChild as HTMLElement;
+    const pad = (n: number, l = 2) => String(n).padStart(l, '0');
+    const tick = () => {
+      const d = new Date();
+      text.nodeValue = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      ms.textContent = '.' + pad(d.getMilliseconds(), 3);
+      clk.setAttribute('datetime', d.toISOString());
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+</script>

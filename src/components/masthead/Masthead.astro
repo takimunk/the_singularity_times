@@ -1,0 +1,113 @@
+---
+// Casper: masthead row (markets ear | emblem | predictions ear), nameplate and double rule.
+// The emblem script publishes --emh and --rule-w on .mast so the ears' bottom border sits on the emblem's base rule.
+import CryptoEar from './CryptoEar.astro';
+import PredictionsEar from './PredictionsEar.astro';
+
+interface Props {
+  coins: string[];
+  predictions: string[];
+}
+
+const { coins, predictions } = Astro.props;
+---
+
+<header class="masthead">
+  <div class="mast">
+    <CryptoEar coins={coins} />
+    <div class="sealbox">
+      <canvas
+        id="seal"
+        role="img"
+        aria-label="Emblem: an engraved blue Earth in a guilloche ring, with engraved wings whose outline is an exponential curve. Drag to rotate the Earth."
+      ></canvas>
+    </div>
+    <PredictionsEar slugs={predictions} />
+  </div>
+  <h1 class="plate"><canvas id="name" role="img" aria-label="The Singularity Times"></canvas></h1>
+  <div class="rules"></div>
+  <canvas id="intro" class="intro" aria-hidden="true" hidden></canvas>
+</header>
+
+<script>
+  import { mountEmblem } from '../../lib/emblem';
+  import { mountNameplate } from '../../lib/nameplate';
+  import { playIntro, shouldPlayIntro } from '../../lib/intro';
+
+  const seal = document.getElementById('seal');
+  const mast = document.querySelector<HTMLElement>('.mast');
+  if (seal instanceof HTMLCanvasElement && mast) mountEmblem(seal, mast);
+  const intro = document.getElementById('intro');
+  if (intro instanceof HTMLCanvasElement && shouldPlayIntro()) void playIntro(intro);
+  const name = document.getElementById('name');
+  if (name instanceof HTMLCanvasElement) mountNameplate(name);
+</script>
+
+<style>
+  .mast {
+    /* Fallbacks until the emblem script measures the base rule: rule centre at 93.5 px, 1 px thick. */
+    --emh: 94px;
+    --rule-w: 1px;
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) auto minmax(200px, 1fr);
+    align-items: start; /* ears and emblem share the row's top edge, so --emh lands on the rule */
+    gap: 20px;
+    padding-top: 8px;
+  }
+  .mast :global(.ear) {
+    border-bottom: var(--rule-w) solid var(--ink);
+    padding: 0 0 4px;
+    width: 100%;
+    max-width: 400px;
+    height: var(--emh);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 3px;
+    min-width: 0;
+  }
+  .mast :global(.ear.l) { justify-self: start; }
+  .mast :global(.ear.r) { justify-self: end; }
+  .sealbox { line-height: 0; }
+  #seal {
+    display: block;
+    width: 520px;
+    height: 100px;
+    max-width: none;
+    touch-action: pan-y; /* horizontal drag rotates; vertical swipes still scroll the page on touch */
+    cursor: grab;
+  }
+  #seal:active { cursor: grabbing; }
+
+  .plate { margin: 0; padding-top: 4px; line-height: 0; }
+  #name { display: block; width: 100%; height: 84px; margin-top: 2px; }
+  .rules { border-top: 3px solid var(--ink); border-bottom: 1px solid var(--ink); height: 4px; margin-top: 4px; }
+
+  /* Intro overlay: hidden in the HTML, shown only by the intro script; never takes pointer events. */
+  .intro {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 40;
+    background: var(--paper);
+    pointer-events: none;
+  }
+
+  @media (max-width: 980px) {
+    .mast { grid-template-columns: 1fr 1fr; }
+    .mast :global(.ear) { height: auto; }
+    .sealbox { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
+    .mast :global(.ear.l), .mast :global(.ear.r) { justify-self: stretch; max-width: none; }
+  }
+  @media (max-width: 640px) {
+    /* One column: emblem, nameplate, rules, then the two ears. */
+    .masthead { display: flex; flex-direction: column; }
+    .mast { display: contents; }
+    .sealbox { order: 1; align-self: center; margin-top: 8px; }
+    .plate { order: 2; }
+    .rules { order: 3; }
+    .mast :global(.ear.l) { order: 4; margin-top: 12px; }
+    .mast :global(.ear.r) { order: 5; margin-top: 8px; }
+  }
+</style>

@@ -61,8 +61,12 @@ export function startClouds(canvas: HTMLCanvasElement): boolean {
   let frame = 0;
   let visible = false;
 
+  // Keep the CSS fallback gradient visible until the first frame is drawn.
+  canvas.style.visibility = 'hidden';
+
   const draw = (time: number) => {
     resize();
+    canvas.style.visibility = '';
     gl.uniform2f(uRes, canvas.width, canvas.height);
     gl.uniform1f(uTime, t0 + time);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
